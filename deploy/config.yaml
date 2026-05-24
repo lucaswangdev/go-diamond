@@ -1,0 +1,22 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+  readTimeout: 60
+  writeTimeout: 60
+  adminToken: "change-me-in-production"
+
+database:
+  dsn: "root:password@unix(/var/run/mysqld/mysqld.sock)/go_diamond?charset=utf8mb4&parseTime=True"
+  maxOpenConns: 20
+  maxIdleConns: 10
+  connMaxLifetime: 300
+
+notifier:
+  pollInterval: 2
+
+log:
+  level: "info"
+  format: "json"
+
+node:
+  id: ""
