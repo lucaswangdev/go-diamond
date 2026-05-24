@@ -296,7 +296,22 @@ export default function DashboardPage() {
                       {new Date(config.updatedAt).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 items-center">
+                        <button
+                          onClick={() => {
+                            const curl = `curl http://localhost:8080/api/v1/configs/${config.namespace}/${config.group}/${config.dataId} \\\n  -H "Authorization: Bearer go-diamond-admin-token"`;
+                            const textarea = document.createElement('textarea');
+                            textarea.value = curl;
+                            document.body.appendChild(textarea);
+                            textarea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(textarea);
+                            alert('CURL copied to clipboard');
+                          }}
+                          className="text-xs text-gray-500 hover:text-gray-700 border border-gray-300 px-2 py-1 rounded"
+                        >
+                          Copy CURL
+                        </button>
                         <button
                           onClick={() => openEdit(config)}
                           className="text-purple-600 hover:text-purple-800"
