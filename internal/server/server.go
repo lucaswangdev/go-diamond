@@ -57,6 +57,7 @@ func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.LoggerMiddleware(logger))
+	router.Use(middleware.CorsMiddleware())
 
 	router.GET("/health", healthHandler.Health)
 	router.GET("/ready", healthHandler.Ready)
@@ -66,15 +67,15 @@ func New(cfg *config.Config, logger *zap.Logger) (*Server, error) {
 	router.GET("/api/v1/watch/:namespace/:group/:dataId", watchHandler.Watch)
 	router.POST("/api/v1/watch/batch", watchHandler.BatchWatch)
 
-	admin := router.Group("/admin/v1")
-	admin.Use(middleware.AuthMiddleware(cfg.Server.AdminToken))
+	api := router.Group("/api/v1")
+	api.Use(middleware.AuthMiddleware(cfg.Server.AdminToken))
 	{
-		admin.POST("/configs", configHandler.CreateConfig)
-		admin.PUT("/configs/:namespace/:group/:dataId", configHandler.UpdateConfig)
-		admin.DELETE("/configs/:namespace/:group/:dataId", configHandler.DeleteConfig)
-		admin.GET("/configs", configHandler.ListConfigs)
-		admin.GET("/configs/:namespace/:group/:dataId/histories", configHandler.GetHistories)
-		admin.POST("/configs/:namespace/:group/:dataId/rollback", configHandler.Rollback)
+		api.POST("/configs", configHandler.CreateConfig)
+		api.PUT("/configs/:namespace/:group/:dataId", configHandler.UpdateConfig)
+		api.DELETE("/configs/:namespace/:group/:dataId", configHandler.DeleteConfig)
+		api.GET("/configs", configHandler.ListConfigs)
+		api.GET("/configs/:namespace/:group/:dataId/histories", configHandler.GetHistories)
+		api.POST("/configs/:namespace/:group/:dataId/rollback", configHandler.Rollback)
 	}
 
 	return &Server{
@@ -91,7 +92,7 @@ func (s *Server) Start() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	s.notifier.Start(ctx)
+	go s.notifier.Start(ctx)
 
 	s.httpServer = &http.Server{
 		Addr:         s.cfg.Server.Addr(),

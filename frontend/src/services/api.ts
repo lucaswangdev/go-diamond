@@ -1,7 +1,7 @@
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 import type { Config, ConfigHistory, ApiResponse, ConfigListResponse, CreateConfigRequest, UpdateConfigRequest } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8080';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 class ApiService {
   private client: AxiosInstance;
@@ -49,38 +49,42 @@ class ApiService {
   }
 
   async createConfig(data: CreateConfigRequest): Promise<{ version: number }> {
-    const response = await this.client.post<ApiResponse<{ version: number }>>('/admin/v1/configs', data);
+    const response = await this.client.post<ApiResponse<{ version: number }>>('/api/v1/configs', data);
     return response.data.data!;
   }
 
   async updateConfig(namespace: string, group: string, dataId: string, data: UpdateConfigRequest): Promise<{ version: number }> {
-    const response = await this.client.put<ApiResponse<{ version: number }>>(`/admin/v1/configs/${namespace}/${group}/${dataId}`, data);
+    const response = await this.client.put<ApiResponse<{ version: number }>>(`/api/v1/configs/${namespace}/${group}/${dataId}`, data);
     return response.data.data!;
   }
 
   async deleteConfig(namespace: string, group: string, dataId: string, operator: string): Promise<void> {
-    await this.client.delete(`/admin/v1/configs/${namespace}/${group}/${dataId}`, {
+    await this.client.delete(`/api/v1/configs/${namespace}/${group}/${dataId}`, {
       data: { operator },
     });
   }
 
   async listConfigs(namespace: string, group: string, page = 1, pageSize = 20): Promise<ConfigListResponse> {
-    const response = await this.client.get<ApiResponse<ConfigListResponse>>('/admin/v1/configs', {
+    const response = await this.client.get<ApiResponse<ConfigListResponse>>('/api/v1/configs', {
       params: { namespace, group, page, pageSize },
     });
-    return response.data.data!;
+    const data = response.data.data;
+    if (!data || !data.list) {
+      return { list: [], total: 0 };
+    }
+    return data;
   }
 
   async getHistories(namespace: string, group: string, dataId: string, page = 1, pageSize = 20): Promise<{ total: number; list: ConfigHistory[] }> {
     const response = await this.client.get<ApiResponse<{ total: number; list: ConfigHistory[] }>>(
-      `/admin/v1/configs/${namespace}/${group}/${dataId}/histories`,
+      `/api/v1/configs/${namespace}/${group}/${dataId}/histories`,
       { params: { page, pageSize } }
     );
-    return response.data.data!;
+    return response.data.data || { total: 0, list: [] };
   }
 
   async rollback(namespace: string, group: string, dataId: string, historyId: number, operator: string): Promise<void> {
-    await this.client.post(`/admin/v1/configs/${namespace}/${group}/${dataId}/rollback`, {
+    await this.client.post(`/api/v1/configs/${namespace}/${group}/${dataId}/rollback`, {
       historyId,
       operator,
     });

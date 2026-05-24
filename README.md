@@ -28,6 +28,32 @@ A distributed configuration management center similar to Apollo/Nacos, built wit
 
 ### Backend Setup
 
+#### Option 1: Without Docker
+
+1. **Install MySQL locally** (e.g., via Homebrew on macOS):
+   ```bash
+   brew install mysql
+   brew services start mysql
+   ```
+
+2. **Create database and run migrations**:
+   ```bash
+   mysql -uroot -e "CREATE DATABASE IF NOT EXISTS go_diamond"
+   for f in db/migrations/*.sql; do mysql -uroot go_diamond < $f; done
+   ```
+
+3. **Modify config for local MySQL** (if needed, update `deploy/config.yaml`):
+   - Default DSN for socket: `root:@unix(/var/run/mysqld/mysqld.sock)/go_diamond?charset=utf8mb4&parseTime=True`
+   - For TCP connection: `root:@tcp(127.0.0.1:3306)/go_diamond?charset=utf8mb4&parseTime=True`
+
+4. **Build and run server**:
+   ```bash
+   go build -o bin/go-diamond ./cmd/server
+   ./bin/go-diamond -config deploy/config.yaml
+   ```
+
+#### Option 2: With Docker
+
 ```bash
 # Start MySQL with Docker
 cd deploy
@@ -86,11 +112,11 @@ Visit http://localhost:5173 and login with:
 | `/api/v1/configs/{ns}/{group}/{dataId}` | GET | Get configuration |
 | `/api/v1/watch/{ns}/{group}/{dataId}` | GET | Watch for changes |
 | `/api/v1/watch/batch` | POST | Batch watch |
-| `/admin/v1/configs` | POST | Create config |
-| `/admin/v1/configs/{ns}/{group}/{dataId}` | PUT | Update config |
-| `/admin/v1/configs/{ns}/{group}/{dataId}` | DELETE | Delete config |
-| `/admin/v1/configs/{ns}/{group}/{dataId}/histories` | GET | Get history |
-| `/admin/v1/configs/{ns}/{group}/{dataId}/rollback` | POST | Rollback |
+| `/api/v1/configs` | POST | Create config |
+| `/api/v1/configs/{ns}/{group}/{dataId}` | PUT | Update config |
+| `/api/v1/configs/{ns}/{group}/{dataId}` | DELETE | Delete config |
+| `/api/v1/configs/{ns}/{group}/{dataId}/histories` | GET | Get history |
+| `/api/v1/configs/{ns}/{group}/{dataId}/rollback` | POST | Rollback |
 
 ### Response Format
 
@@ -125,6 +151,29 @@ cd frontend
 npm run build
 npx playwright test
 ```
+
+## Load Testing
+
+### Prerequisites
+
+Install [k6](https://grafana.com/docs/k6/latest/set-up/install-k6/):
+
+```bash
+# macOS
+brew install k6
+```
+
+### Run Stress Tests
+
+```bash
+# Default targets localhost:8080
+k6 run load-test-platform/stress-test/api-stress.js
+
+# Custom API address
+BASE_URL=http://your-api:8080 k6 run load-test-platform/stress-test/api-stress.js
+```
+
+The API stress test covers health check, config retrieval, and long-polling watch endpoints.
 
 ## Configuration
 

@@ -3,10 +3,10 @@ server:
   port: 8080
   readTimeout: 60
   writeTimeout: 60
-  adminToken: "change-me-in-production"
+  adminToken: "go-diamond-admin-token"
 
 database:
-  dsn: "root:password@unix(/var/run/mysqld/mysqld.sock)/go_diamond?charset=utf8mb4&parseTime=True"
+  dsn: "root:root@tcp(127.0.0.1:3306)/go_diamond?charset=utf8mb4&parseTime=True"
   maxOpenConns: 20
   maxIdleConns: 10
   connMaxLifetime: 300

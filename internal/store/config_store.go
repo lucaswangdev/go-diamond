@@ -34,8 +34,16 @@ func (s *ConfigStore) Get(ctx context.Context, namespace, group, dataID string) 
 func (s *ConfigStore) Create(ctx context.Context, cfg *model.Config) error {
 	query := `INSERT INTO configs (namespace, ` + "`group`" + `, data_id, content, content_md5, format, description, version, is_deleted, created_by, updated_by, created_at, updated_at)
 			  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, NOW(), NOW())`
-	_, err := s.db.ExecContext(ctx, query, cfg.Namespace, cfg.Group, cfg.DataID, cfg.Content, cfg.ContentMD5, cfg.Format, cfg.Description, cfg.Version, cfg.CreatedBy, cfg.UpdatedBy)
-	return err
+	result, err := s.db.ExecContext(ctx, query, cfg.Namespace, cfg.Group, cfg.DataID, cfg.Content, cfg.ContentMD5, cfg.Format, cfg.Description, cfg.Version, cfg.CreatedBy, cfg.UpdatedBy)
+	if err != nil {
+		return err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+	cfg.ID = uint64(id)
+	return nil
 }
 
 func (s *ConfigStore) Update(ctx context.Context, cfg *model.Config) error {

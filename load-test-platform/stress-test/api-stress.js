@@ -88,9 +88,9 @@ function textSummary(data, opts) {
   summary += `${indent}Total Requests: ${data.metrics.http_reqs.values.count}\n`;
   summary += `${indent}Request Rate: ${data.metrics.http_reqs.values.rate.toFixed(2)}/s\n`;
   summary += `${indent}Avg Duration: ${data.metrics.http_req_duration.values.avg.toFixed(2)}ms\n`;
-  summary += `${indent}p95 Duration: ${data.metrics.http_req_duration.values['p(95)'].toFixed(2)}ms\n`;
-  summary += `${indent}p99 Duration: ${data.metrics.http_req_duration.values['p(99)'].toFixed(2)}ms\n`;
-  summary += `${indent}Max Duration: ${data.metrics.http_req_duration.values.max.toFixed(2)}ms\n`;
+  summary += `${indent}p95 Duration: ${data.metrics.http_req_duration.values['p(95)']?.toFixed(2) ?? 0}ms\n`;
+  summary += `${indent}p99 Duration: ${data.metrics.http_req_duration.values['p(99)']?.toFixed(2) ?? 0}ms\n`;
+  summary += `${indent}Max Duration: ${data.metrics.http_req_duration.values.max?.toFixed(2) ?? 0}ms\n`;
   summary += `${indent}Failed Rate: ${(data.metrics.http_req_failed.values.rate * 100).toFixed(2)}%\n`;
   summary += `${indent}Request Duration - Avg: ${data.metrics.http_req_duration.values.avg}ms\n`;
   return summary;

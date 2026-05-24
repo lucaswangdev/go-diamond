@@ -11,6 +11,8 @@ const MOCK_USERS: Record<string, string> = {
   'user@example.com': 'user123',
 };
 
+const ADMIN_TOKEN = 'go-diamond-admin-token';
+
 class AuthService {
   async login(email: string, password: string): Promise<{ token: string; user: AuthUser }> {
     // Simulate API delay
@@ -21,7 +23,8 @@ class AuthService {
       throw new Error('Invalid email or password');
     }
 
-    const token = btoa(`${email}:${Date.now()}`);
+    // Use actual admin token for admin users
+    const token = email === 'admin@example.com' ? ADMIN_TOKEN : btoa(`${email}:${Date.now()}`);
     const user: AuthUser = { email, name: email.split('@')[0] };
 
     localStorage.setItem('token', token);

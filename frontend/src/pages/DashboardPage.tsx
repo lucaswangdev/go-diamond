@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import apiService from '../services/api';
 import type { Config, ConfigHistory } from '../types';
+import Editor from '@monaco-editor/react';
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
@@ -24,6 +25,35 @@ export default function DashboardPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [histories, setHistories] = useState<ConfigHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [contentError, setContentError] = useState('');
+
+  // JSON validation
+  const validateJson = (value: string): boolean => {
+    if (!value.trim()) {
+      setContentError('');
+      return true;
+    }
+    try {
+      JSON.parse(value);
+      setContentError('');
+      return true;
+    } catch (e) {
+      setContentError('Invalid JSON format');
+      return false;
+    }
+  };
+
+  const formatContent = () => {
+    if (content.trim()) {
+      try {
+        const parsed = JSON.parse(content);
+        setContent(JSON.stringify(parsed, null, 2));
+        setContentError('');
+      } catch (e) {
+        setContentError('Invalid JSON format');
+      }
+    }
+  };
 
   const loadConfigs = async () => {
     setLoading(true);
@@ -39,12 +69,30 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    loadConfigs();
+    let ignore = false;
+    setLoading(true);
+    apiService.listConfigs(namespace, group, 1, 100).then((data) => {
+      if (!ignore) {
+        setConfigs(data.list);
+        setLoading(false);
+      }
+    }).catch((err) => {
+      if (!ignore) {
+        setError((err as Error).message);
+        setLoading(false);
+      }
+    });
+    return () => { ignore = true; };
   }, [namespace, group]);
 
   const handleCreate = async () => {
     if (!dataId || !content) {
       setError('DataID and Content are required');
+      return;
+    }
+
+    if (format === 'json' && !validateJson(content)) {
+      setError('Invalid JSON format');
       return;
     }
 
@@ -68,6 +116,11 @@ export default function DashboardPage() {
 
   const handleUpdate = async () => {
     if (!selectedConfig) return;
+
+    if (format === 'json' && !validateJson(content)) {
+      setError('Invalid JSON format');
+      return;
+    }
 
     try {
       await apiService.updateConfig(selectedConfig.namespace, selectedConfig.group, selectedConfig.dataId, {
@@ -109,18 +162,6 @@ export default function DashboardPage() {
     }
   };
 
-  const loadHistories = async () => {
-    if (!selectedConfig) return;
-    setHistoryLoading(true);
-    try {
-      const data = await apiService.getHistories(selectedConfig.namespace, selectedConfig.group, selectedConfig.dataId);
-      setHistories(data.list);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
 
   const openEdit = (config: Config) => {
     setSelectedConfig(config);
@@ -134,11 +175,22 @@ export default function DashboardPage() {
     setIsCreating(false);
   };
 
-  const openHistory = async (config: Config) => {
+  const openHistory = (config: Config) => {
     setSelectedConfig(config);
     setShowHistory(true);
-    await loadHistories();
   };
+
+  // Load histories when showHistory becomes true
+  useEffect(() => {
+    if (!showHistory || !selectedConfig) return;
+
+    setHistoryLoading(true);
+    setHistories([]);
+    apiService.getHistories(selectedConfig.namespace, selectedConfig.group, selectedConfig.dataId)
+      .then((data) => setHistories(data.list))
+      .catch((err) => setError((err as Error).message))
+      .finally(() => setHistoryLoading(false));
+  }, [showHistory, selectedConfig]);
 
   const resetForm = () => {
     setDataId('');
@@ -146,6 +198,7 @@ export default function DashboardPage() {
     setFormat('json');
     setDescription('');
     setError('');
+    setContentError('');
   };
 
   return (
@@ -274,12 +327,12 @@ export default function DashboardPage() {
 
       {/* Create/Edit Modal */}
       {(isCreating || isEditing) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-auto">
-            <div className="p-6 border-b">
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b flex-shrink-0">
               <h2 className="text-xl font-semibold">{isCreating ? 'Create Config' : 'Edit Config'}</h2>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto">
               {isCreating && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
@@ -316,14 +369,40 @@ export default function DashboardPage() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Content</label>
-                <textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  rows={10}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm"
-                  placeholder='{"key": "value"}'
-                />
+                <label className="block text-sm font-medium text-gray-700">Content <span className="text-xs text-gray-500">(JSON)</span></label>
+                <div className={`mt-1 border rounded-md overflow-hidden ${contentError ? 'border-red-500' : 'border-gray-300'}`}>
+                  <div className="flex items-center justify-between bg-gray-800 px-3 py-1 border-b border-gray-700">
+                    <span className="text-xs text-gray-400">JSON</span>
+                    <button
+                      type="button"
+                      onClick={formatContent}
+                      className="px-2 py-1 text-xs text-gray-300 hover:text-white hover:bg-gray-700 rounded"
+                    >
+                      Format
+                    </button>
+                  </div>
+                  <div className="h-[250px]">
+                    <Editor
+                      height="100%"
+                      defaultLanguage="json"
+                      value={content}
+                      onChange={(value) => {
+                        setContent(value || '');
+                        if (format === 'json') validateJson(value || '');
+                      }}
+                      theme="vs-dark"
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: 13,
+                        lineNumbers: 'on',
+                        scrollBeyondLastLine: false,
+                        automaticLayout: true,
+                        tabSize: 2,
+                      }}
+                    />
+                  </div>
+                </div>
+                {contentError && <p className="mt-1 text-xs text-red-500">{contentError}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -351,7 +430,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-            <div className="p-6 border-t flex justify-end gap-4">
+            <div className="p-6 border-t flex justify-end gap-4 flex-shrink-0">
               <button
                 onClick={() => { setIsCreating(false); setIsEditing(false); setSelectedConfig(null); resetForm(); }}
                 className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
